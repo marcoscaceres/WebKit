@@ -118,7 +118,7 @@ void ScreenOrientation::lock(LockType lockType, Ref<DeferredPromise>&& promise)
 
     if (document->settings().fullscreenRequirementForScreenOrientationLockingEnabled()) {
 #if ENABLE(FULLSCREEN_API)
-        if (!document->fullscreenManager().isFullscreen()) {
+        if (!document->fullscreenManager().fullscreenElement()) {
 #else
         if (true) {
 #endif

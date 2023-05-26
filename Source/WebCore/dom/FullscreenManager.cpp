@@ -43,6 +43,7 @@
 #include "Page.h"
 #include "PseudoClassChangeInvalidation.h"
 #include "QualifiedName.h"
+#include "ScreenOrientationManager.h"
 #include "Settings.h"
 #include <wtf/LoggerHelper.h>
 
@@ -341,6 +342,7 @@ void FullscreenManager::exitFullscreen(RefPtr<DeferredPromise>&& promise)
     bool exitsTopDocument = exitDocuments.containsIf([&](auto& document) {
         return document.ptr() == topDocument.ptr();
     });
+
     if (exitsTopDocument && topDocument->fullscreenManager().isSimpleFullscreenDocument()) {
         mode = ExitMode::Resize;
         exitingDocument = topDocument;
@@ -370,6 +372,18 @@ void FullscreenManager::exitFullscreen(RefPtr<DeferredPromise>&& promise)
                 promise->resolve();
             ERROR_LOG(identifier, "task - Document not in page; bailing.");
             return;
+        }
+
+        // Run the "fully unlock the screen orientation" steps with doc.
+        // https://w3c.github.io/screen-orientation/#dfn-fully-unlock-the-screen-orientation-steps
+        if (auto orientationManager = page->screenOrientationManager()) {
+            if (auto orientationPromise = orientationManager->takeLockPromise()) {
+                m_document.eventLoop().queueTask(TaskSource::UserInteraction, [orientationPromise = WTFMove(orientationPromise)]() {
+                    if (orientationPromise)
+                        orientationPromise->reject(Exception { AbortError, "Exiting fullscreen aborted orientation change"_s });
+                });
+            }
+            orientationManager->unlock();
         }
 
         // If there is a pending fullscreen element but no fullscreen element
@@ -745,7 +759,6 @@ bool FullscreenManager::isSimpleFullscreenDocument() const
 WTFLogChannel& FullscreenManager::logChannel() const
 {
     return LogFullscreen;
-
 }
 #endif
 

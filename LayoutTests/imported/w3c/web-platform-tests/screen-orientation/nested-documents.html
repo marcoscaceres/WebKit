@@ -12,68 +12,72 @@
     } from "./resources/orientation-utils.js";
 
     promise_test(async (t) => {
-      t.add_cleanup(makeCleanup());
       const iframe = await attachIframe();
       const iframeWin = iframe.contentWindow;
 
       // Go full screen
-      await test_driver.bless("request full screen");
-      await document.body.requestFullscreen();
+      await test_driver.bless("request full screen", null, iframeWin);
+      await iframe.contentDocument.body.requestFullscreen();
 
       // Lock the orientation from the iframe
       const opposite = getOppositeOrientation();
-      const iframePromise = iframeWin.screen.orientation.lock(opposite);
 
-      // Calling lock() from top-level will cancel the iframe's promise
       const topPromise = window.screen.orientation.lock(opposite);
+      // Causes topPromise to abort
+      const iframePromise = iframeWin.screen.orientation.lock(opposite);
+      // Causes iframePromise to abort
+      const exitFullScreenPromise = iframe.contentDocument.exitFullscreen();
+
+      await promise_rejects_dom(t, "AbortError", topPromise);
       await promise_rejects_dom(
         t,
         "AbortError",
         iframeWin.DOMException,
         iframePromise
       );
-      await topPromise;
+      await exitFullScreenPromise;
     }, "Requesting orientation lock from one document cancels the lock request from another document");
 
     promise_test(async (t) => {
-      t.add_cleanup(makeCleanup());
       // Create 2 nested iframes
-      const src = "/screen-orientation/resources/empty.html";
-      const outerIframe = await attachIframe({ src: `${src}#1` });
+      const outerIframe = await attachIframe({ src: `about:blank#1` });
       const innerIframe = await attachIframe({
         context: outerIframe.contentWindow,
-        src: `${src}#2`,
+        src: `about:blank#2`,
       });
 
       const iframes = [outerIframe, innerIframe];
 
-      // Go full screen
+      // Go full screen on the innerIframe
       await test_driver.bless(
-        "request full screen"
+        "request full screen",
+        null,
+        innerIframe.contentWindow
       );
-      await document.documentElement.requestFullscreen();
+      await innerIframe.contentDocument.body.requestFullscreen();
+
       const opposite = getOppositeOrientation();
 
-      // Each iframe tries to lock the orientation
-      const requestToLock = iframes.map((iframe) => {
+      // Each iframe tries to lock the orientation,
+      const requestsToLock = iframes.map((iframe) => {
         return {
           promise: iframe.contentWindow.screen.orientation.lock(opposite),
           context: iframe.contentWindow,
+          iframe,
         };
       });
 
-      // But calling lock() from top-level will aborts all iframe's promises
+      // But calling lock() from top-level aborts the last promise
       const topPromise = window.screen.orientation.lock(opposite);
 
       // Check that all promises are rejected with AbortError
-      for (let i = 0; i < requestToLock.length; i++) {
-        const { promise, context } = requestToLock[i];
+      for (const { promise, context, iframe } of requestsToLock) {
         await promise_rejects_dom(
           t,
           "AbortError",
           context.DOMException,
           promise,
-          `Expected request to lock orientation from iframe ${i} to abort`
+          `iframe ${iframe.contentWindow.location}`
         );
       }
       // Finally, top-level promise resolves

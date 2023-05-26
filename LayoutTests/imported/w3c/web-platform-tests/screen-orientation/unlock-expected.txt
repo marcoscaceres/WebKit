@@ -1,5 +1,4 @@
 
-
 PASS unlock() doesn't throw when there is no lock
 PASS unlock() returns a void value
 PASS unlock() doesn't throw when there is no lock with fullscreen

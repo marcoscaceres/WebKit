@@ -1,4 +1,6 @@
+CONSOLE MESSAGE: Error while parsing the 'sandbox' attribute: 'allow-orientation-lock' is an invalid sandbox flag.
 
-PASS Test subframes receive orientation change events
+FAIL onchange-event-subframe assert_true: iframe supports 'allow-orientation-lock' expected true got false
+PASS Test cross-origin sub-frame receive orientation change events
 PASS Check directly that events are fired in right order (from top to bottom)
 

@@ -1,7 +1,6 @@
+CONSOLE MESSAGE: Error while parsing the 'sandbox' attribute: 'allow-orientation-lock' is an invalid sandbox flag.
 
-
-Harness Error (FAIL), message = Timeout while running cleanup for test named "Check directly that events are fired in right order (from top to bottom)".
-
-FAIL Test subframes receive orientation change events promise_test: Unhandled rejection with value: object "NotSupportedError: Screen orientation locking is not supported"
+FAIL onchange-event-subframe assert_true: iframe supports 'allow-orientation-lock' expected true got false
+FAIL Test cross-origin sub-frame receive orientation change events promise_test: Unhandled rejection with value: object "NotSupportedError: Screen orientation locking is not supported"
 FAIL Check directly that events are fired in right order (from top to bottom) promise_test: Unhandled rejection with value: object "NotSupportedError: Screen orientation locking is not supported"
 

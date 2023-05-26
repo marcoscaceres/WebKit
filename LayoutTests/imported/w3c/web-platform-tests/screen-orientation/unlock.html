@@ -38,8 +38,8 @@
   }, "unlock() aborts a pending lock request");
 
   promise_test(async (t) => {
-    t.add_cleanup(makeCleanup());
     const iframe = await attachIframe();
+    t.add_cleanup(makeCleanup(iframe));
     await test_driver.bless("request full screen");
     await document.documentElement.requestFullscreen();
     const promise = iframe.contentWindow.screen.orientation.lock(
