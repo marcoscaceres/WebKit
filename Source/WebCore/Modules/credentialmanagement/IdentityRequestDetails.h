@@ -23,6 +23,14 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-dictionary IdentityRequestProvider {
-    required IdentityCredentialProtocol protocol;
+#pragma once
+
+#include "IdentityCredentialProtocol.h"
+
+namespace WebCore {
+
+struct IdentityRequestDetails {
+    IdentityCredentialProtocol protocol;
 };
+
+} // namespace WebCore

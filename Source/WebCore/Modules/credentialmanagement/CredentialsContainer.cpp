@@ -32,7 +32,6 @@
 #include "AbortSignal.h"
 #include "CredentialCreationOptions.h"
 #include "CredentialRequestOptions.h"
-#include "DigitalCredentialRequestOptions.h"
 #include "DigitalIdentity.h"
 #include "Document.h"
 #include "ExceptionOr.h"

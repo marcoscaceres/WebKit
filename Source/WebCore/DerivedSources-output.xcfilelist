@@ -841,8 +841,6 @@ $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSDeviceOrientationOrMotionPermissi
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSDeviceOrientationOrMotionPermissionState.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSDigitalIdentity.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSDigitalIdentity.h
-$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSDigitalCredentialRequestOptions.cpp
-$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSDigitalCredentialRequestOptions.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSDistanceModelType.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSDistanceModelType.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSDocument+CSSOMView.cpp
@@ -1649,8 +1647,8 @@ $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSIIRFilterOptions.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSIIRFilterOptions.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSIdentityCredentialProtocol.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSIdentityCredentialProtocol.h
-$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSIdentityRequestProvider.cpp
-$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSIdentityRequestProvider.h
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSIdentityRequestDetails.cpp
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSIdentityRequestDetails.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSIdleDeadline.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSIdleDeadline.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSIdleRequestCallback.cpp
