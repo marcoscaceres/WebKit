@@ -1,9 +1,11 @@
 <!DOCTYPE html>
-<script src="/resources/testharness.js"></script>
 <script src="/resources/testdriver.js"></script>
 <script src="/resources/testdriver-vendor.js"></script>
-<body></body>
+<body>
+    <textarea></textarea>
+</body>
 <script type="module">
+  test_driver.set_test_context(window.opener);
   // @ts-check
   /**
    *
@@ -42,8 +44,7 @@
           result = await identity.create(data.options);
           break;
         case "get":
-          await test_driver.bless("user activation", null, window);
-          assert_true(navigator.userActivation.isActive, "user activation must be active");
+          await test_driver.bless("user activation", null, this);
           result = await identity.get(data.options);
           break;
         case "preventSilentAccess":
