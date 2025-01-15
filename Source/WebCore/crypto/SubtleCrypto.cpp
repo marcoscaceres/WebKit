@@ -1302,4 +1302,9 @@ void SubtleCrypto::unwrapKey(JSC::JSGlobalObject& state, KeyFormat format, Buffe
     unwrapAlgorithm->decrypt(*unwrapParams, unwrappingKey, WTFMove(wrappedKey), WTFMove(callback), WTFMove(exceptionCallback), *scriptExecutionContext(), m_workQueue);
 }
 
+void SubtleCrypto::generateUserKey(SubtleCrypto::AlgorithmIdentifier&&, Vector<CryptoKeyUsage>&&, Ref<DeferredPromise>&& promise)
+{
+    promise->reject(Exception { ExceptionCode::NotSupportedError });
+}
+
 } // namespace WebCore

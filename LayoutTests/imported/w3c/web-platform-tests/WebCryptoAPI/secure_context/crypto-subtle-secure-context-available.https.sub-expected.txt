@@ -1,3 +1,4 @@
+CoreSVG has logged an error. Set environment variabe "CORESVG_VERBOSE" to learn more.
 
 PASS Secure context window has access to crypto.subtle
 PASS Secure context worker has access to crypto.subtle

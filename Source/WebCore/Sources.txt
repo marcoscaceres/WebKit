@@ -4770,6 +4770,7 @@ JSURLSearchParams.cpp
 JSUserActivation.cpp
 JSUndoItem.cpp
 JSUndoManager.cpp
+JSUserCryptoKeyParams.cpp
 JSUserMessageHandler.cpp
 JSUserMessageHandlersNamespace.cpp
 JSUserVerificationRequirement.cpp

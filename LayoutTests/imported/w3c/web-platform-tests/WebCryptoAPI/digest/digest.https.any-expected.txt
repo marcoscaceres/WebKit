@@ -1,3 +1,4 @@
+CoreSVG has logged an error. Set environment variabe "CORESVG_VERBOSE" to learn more.
 
 PASS SHA-1 with empty source data
 PASS sha-1 with empty source data

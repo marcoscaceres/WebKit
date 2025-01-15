@@ -1,3 +1,4 @@
+CoreSVG has logged an error. Set environment variabe "CORESVG_VERBOSE" to learn more.
 
 PASS Bad algorithm: generateKey(AES, false, [decrypt])
 PASS Bad algorithm: generateKey(AES, true, [decrypt])

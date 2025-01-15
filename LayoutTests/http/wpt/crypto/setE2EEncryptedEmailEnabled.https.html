@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>
+        Check that parts of the Digital Credentials API exposure
+        is controlled via preference.
+    </title>
+</head>
+<script>
+    testRunner.dumpAsText();
+    testRunner.waitUntilDone();
+
+    async function runTest() {
+        checkWindowObject();
+
+        window.internals.settings.setE2EEncryptedEmailEnabled(false);
+
+        try {
+            await checkIFrame();
+        } catch (err) {
+            console.log(err);
+        } finally {
+            testRunner.notifyDone();
+        }
+        console.log("Test finished.");
+    }
+
+    function checkWindowObject() {
+        // on by default, because it's testable in the preferences .yaml file
+        if (window.crypto.subtle.generateUserKey === undefined) {
+            console.log(
+                "FAIL: generateUserKey() must be exposed as a function. Was enabled by pref."
+            );
+        }
+    }
+
+    async function checkIFrame() {
+        const iframe = document.querySelector("iframe");
+        await new Promise((r) => {
+            iframe.onload = r;
+            iframe.src = "about:blank";
+        });
+        const iframeWindow = iframe.contentWindow;
+        if ("generateUserKey" in iframeWindow.crypto.subtle) {
+            console.log("FAIL: generateUserKey() is disabled by preference.");
+        }
+    }
+</script>
+
+<body onload="runTest()">
+    <iframe></iframe>
+</body>
+
+</html>

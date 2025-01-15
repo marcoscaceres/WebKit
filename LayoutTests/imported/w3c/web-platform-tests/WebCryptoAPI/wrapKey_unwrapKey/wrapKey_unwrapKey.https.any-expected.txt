@@ -1,3 +1,4 @@
+CoreSVG has logged an error. Set environment variabe "CORESVG_VERBOSE" to learn more.
 CONSOLE MESSAGE: AES-CBC and AES-CTR do not provide authentication by default, and implementing it manually can result in minor, but serious mistakes. We recommended using authenticated encryption like AES-GCM to protect against chosen-ciphertext attacks.
 
 PASS setup

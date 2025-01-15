@@ -1,3 +1,4 @@
+CoreSVG has logged an error. Set environment variabe "CORESVG_VERBOSE" to learn more.
 
 PASS Good parameters: P-256 bits (spki, buffer(91), {name: ECDSA, namedCurve: P-256}, true, [verify])
 PASS Good parameters: P-256 bits (spki, buffer(59, compressed), {name: ECDSA, namedCurve: P-256}, true, [verify])

@@ -1,3 +1,4 @@
+CoreSVG has logged an error. Set environment variabe "CORESVG_VERBOSE" to learn more.
 
 PASS Context is discarded in generateKey
 PASS Context is discarded in importKey
