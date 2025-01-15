@@ -430,6 +430,10 @@ WK_EXPORT void WKPreferencesSetWebAuthenticationEnabled(WKPreferencesRef, bool f
 WK_EXPORT bool WKPreferencesGetWebAuthenticationEnabled(WKPreferencesRef);
 
 // Defaults to false
+WK_EXPORT void WKPreferencesSetE2EEncryptedEmailEnabled(WKPreferencesRef, bool flag);
+WK_EXPORT bool WKPreferencesGetE2EEncryptedEmailEnabled(WKPreferencesRef);
+
+// Defaults to false
 WK_EXPORT void WKPreferencesSetDigitalCredentialsEnabled(WKPreferencesRef, bool flag);
 WK_EXPORT bool WKPreferencesGetDigitalCredentialsEnabled(WKPreferencesRef);
 

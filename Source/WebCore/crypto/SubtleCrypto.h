@@ -73,6 +73,7 @@ public:
     void exportKey(KeyFormat, CryptoKey&, Ref<DeferredPromise>&&);
     void wrapKey(JSC::JSGlobalObject&, KeyFormat, CryptoKey&, CryptoKey& wrappingKey, AlgorithmIdentifier&& wrapAlgorithm, Ref<DeferredPromise>&&);
     void unwrapKey(JSC::JSGlobalObject&, KeyFormat, BufferSource&& wrappedKey, CryptoKey& unwrappingKey, AlgorithmIdentifier&& unwrapAlgorithm, AlgorithmIdentifier&& unwrappedKeyAlgorithm, bool extractable, Vector<CryptoKeyUsage>&&, Ref<DeferredPromise>&&);
+    void generateUserKey(AlgorithmIdentifier&&, Vector<CryptoKeyUsage>&&, Ref<DeferredPromise>&&);
 
 private:
     explicit SubtleCrypto(ScriptExecutionContext*);

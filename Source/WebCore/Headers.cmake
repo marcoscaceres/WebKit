@@ -882,6 +882,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     crypto/JsonWebKey.h
     crypto/RsaOtherPrimesInfo.h
     crypto/SerializedCryptoKeyWrap.h
+    crypto/UserCryptoKeyParams.h
     crypto/WrappedCryptoKey.h
 
     crypto/keys/CryptoAesKeyAlgorithm.h

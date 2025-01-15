@@ -953,6 +953,16 @@ bool WKPreferencesGetEncodingDetectorEnabled(WKPreferencesRef preferencesRef)
     return toImpl(preferencesRef)->usesEncodingDetector();
 }
 
+void WKPreferencesSetE2EEncryptedEmailEnabled(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setE2EEncryptedEmailEnabled(enabled);
+}
+
+bool WKPreferencesGetE2EEncryptedEmailEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->e2EEncryptedEmailEnabled();
+}
+
 void WKPreferencesSetTextAutosizingEnabled(WKPreferencesRef preferencesRef, bool textAutosizingEnabled)
 {
     toImpl(preferencesRef)->setTextAutosizingEnabled(textAutosizingEnabled);

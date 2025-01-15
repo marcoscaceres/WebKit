@@ -1233,6 +1233,7 @@ $(PROJECT_DIR)/crypto/CryptoKeyUsage.idl
 $(PROJECT_DIR)/crypto/JsonWebKey.idl
 $(PROJECT_DIR)/crypto/RsaOtherPrimesInfo.idl
 $(PROJECT_DIR)/crypto/SubtleCrypto.idl
+$(PROJECT_DIR)/crypto/UserCryptoKeyParams.idl
 $(PROJECT_DIR)/crypto/keys/CryptoAesKeyAlgorithm.idl
 $(PROJECT_DIR)/crypto/keys/CryptoEcKeyAlgorithm.idl
 $(PROJECT_DIR)/crypto/keys/CryptoHmacKeyAlgorithm.idl

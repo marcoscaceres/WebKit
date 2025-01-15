@@ -4782,6 +4782,7 @@ JSUserActivation.cpp
 JSUndoItem.cpp
 JSUndoManager.cpp
 JSUnknownCredentialOptions.cpp
+JSUserCryptoKeyParams.cpp
 JSUserMessageHandler.cpp
 JSUserMessageHandlersNamespace.cpp
 JSUserVerificationRequirement.cpp

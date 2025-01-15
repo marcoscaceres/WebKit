@@ -939,6 +939,7 @@ set(WebCore_NON_SVG_IDL_FILES
     crypto/JsonWebKey.idl
     crypto/RsaOtherPrimesInfo.idl
     crypto/SubtleCrypto.idl
+    crypto/UserCryptoKeyParams.idl
 
     crypto/keys/CryptoAesKeyAlgorithm.idl
     crypto/keys/CryptoEcKeyAlgorithm.idl

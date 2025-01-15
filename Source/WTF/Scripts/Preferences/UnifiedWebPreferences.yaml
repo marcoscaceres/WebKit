@@ -2766,6 +2766,23 @@ DynamicSiteInterventionsEnabled:
     WebCore:
       default: false
 
+E2EEncryptedEmailEnabled:
+  type: bool
+  status: testable
+  category: dom
+  humanReadableName: "E2E Encrypted Email"
+  humanReadableDescription: "End-to-end encrypted email support"
+  defaultValue:
+    WebKitLegacy:
+      default: false
+    WebKit:
+      default: false
+    WebCore:
+      default: false
+  disableInLockdownMode: true
+  sharedPreferenceForWebProcess: true
+  richJavaScript: true
+
 EditableLinkBehavior:
   type: uint32_t
   refinedType: WebCore::EditableLinkBehavior
