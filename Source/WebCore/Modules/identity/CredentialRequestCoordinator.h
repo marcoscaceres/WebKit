@@ -53,12 +53,12 @@ class CredentialRequestCoordinator final : public RefCounted<CredentialRequestCo
 
 public:
     static Ref<CredentialRequestCoordinator> create(UniqueRef<CredentialRequestCoordinatorClient>&&, Page&);
-    WEBCORE_EXPORT bool presentPicker(CredentialPromise&&, DigitalCredentialsRequestData&&, RefPtr<AbortSignal>);
+    WEBCORE_EXPORT void presentPicker(CredentialPromise&&, DigitalCredentialsRequestData&&, RefPtr<AbortSignal>);
     WEBCORE_EXPORT void abortPicker(JSC::JSValue reason);
-
     ~CredentialRequestCoordinator();
 
 private:
+    static bool canPresentDigitalCredentialsUI() { return m_hasDigitalCredentialsUI; }
     class PickerStateGuard final {
     public:
         explicit PickerStateGuard(CredentialRequestCoordinator&);
@@ -97,6 +97,14 @@ private:
     PickerState m_state { PickerState::Idle };
     std::optional<CredentialPromise> m_currentPromise;
     WeakPtr<Page> m_page;
+
+    const static bool m_hasDigitalCredentialsUI {
+#if HAVE(DIGITAL_CREDENTIALS_UI)
+        true
+#else
+        false
+#endif
+    };
 };
 
 } // namespace WebCore

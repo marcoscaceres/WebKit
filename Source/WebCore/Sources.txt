@@ -3521,6 +3521,7 @@ JSAudioWorkletNode.cpp
 JSAudioWorkletNodeOptions.cpp
 JSAudioWorkletProcessor.cpp
 JSAudioWorkletProcessorConstructor.cpp
+JSMobileDocumentRequest.cpp
 JSAuthenticationExtensionsClientInputs.cpp
 JSAuthenticationExtensionsClientInputsJSON.cpp
 JSAuthenticationExtensionsClientOutputs.cpp

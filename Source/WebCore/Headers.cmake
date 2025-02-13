@@ -414,6 +414,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     Modules/highlight/HighlightRegistry.h
     Modules/highlight/HighlightVisibility.h
 
+    Modules/identity/MobileDocumentRequest.h
     Modules/identity/CredentialRequestCoordinator.h
     Modules/identity/CredentialRequestCoordinatorClient.h
     Modules/identity/DigitalCredential.h

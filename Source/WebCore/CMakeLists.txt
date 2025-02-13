@@ -399,6 +399,7 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/highlight/Highlight.idl
     Modules/highlight/HighlightRegistry.idl
 
+    Modules/identity/MobileDocumentRequest.idl
     Modules/identity/DigitalCredential.idl
     Modules/identity/DigitalCredentialRequest.idl
     Modules/identity/DigitalCredentialRequestOptions.idl

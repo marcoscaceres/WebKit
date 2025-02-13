@@ -379,6 +379,7 @@ JS_BINDING_IDLS := \
     $(WebCore)/Modules/geolocation/PositionOptions.idl \
     $(WebCore)/Modules/highlight/HighlightRegistry.idl \
     $(WebCore)/Modules/highlight/Highlight.idl \
+    $(WebCore)/Modules/identity/MobileDocumentRequest.idl \
     $(WebCore)/Modules/identity/DigitalCredential.idl \
     $(WebCore)/Modules/identity/DigitalCredentialRequest.idl \
     $(WebCore)/Modules/identity/DigitalCredentialRequestOptions.idl \
