@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<script src="/resources/testdriver.js"></script>
+<script src="/resources/testdriver-vendor.js"></script>
+<body>
+    <h1>User activation bless iframe</h1>
+</body>
+
+<script type="module">
+    async function messageListener(event) {
+        await test_driver.bless("user activation");
+        event.source.postMessage("success", event.origin);
+    }
+
+    if (window.top?.origin !== window.origin) {
+        test_driver.set_test_context(window.top);
+    }
+    window.addEventListener("message", messageListener);
+</script>

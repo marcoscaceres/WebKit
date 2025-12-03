@@ -1,0 +1,9 @@
+
+
+Harness Error (TIMEOUT), message = null
+
+PASS bless in top document
+PASS bless added directly from parent script to same-origin iframe's window context
+PASS bless added from parent script to same-origin iframe via sendMessage
+TIMEOUT bless added from inside cross-origin iframe Test timed out
+
