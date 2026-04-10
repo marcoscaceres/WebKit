@@ -41,9 +41,6 @@
 #include "JSDOMConvertJSON.h"
 #include "LocalDOMWindow.h"
 #include "LocalFrame.h"
-#include "MediationRequirement.h"
-#include "PermissionsPolicy.h"
-#include "VisibilityState.h"
 #include <JavaScriptCore/ConsoleTypes.h>
 #include <JavaScriptCore/JSONObject.h>
 #include <Logging.h>
@@ -131,11 +128,6 @@ void DigitalCredential::discoverFromExternalSource(const Document& document, Cre
 {
     ASSERT(options.digital);
 
-    if (!PermissionsPolicy::isFeatureEnabled(PermissionsPolicy::Feature::DigitalCredentialsGetRule, document, PermissionsPolicy::ShouldReportViolation::No)) {
-        promise.reject(Exception { ExceptionCode::NotAllowedError, "Third-party iframes are not allowed to call .get() unless explicitly allowed via Permissions Policy (digital-credentials-get)"_s });
-        return;
-    }
-
     RefPtr frame = document.frame();
     RefPtr window = document.window();
     if (!frame || !window) {
@@ -151,13 +143,9 @@ void DigitalCredential::discoverFromExternalSource(const Document& document, Cre
         return;
     }
 
-    if (!document.hasFocus()) {
-        promise.reject(Exception { ExceptionCode::NotAllowedError, "The document is not focused."_s });
-        return;
-    }
-
-    if (document.visibilityState() != VisibilityState::Visible) {
-        promise.reject(Exception { ExceptionCode::NotAllowedError, "The document is not visible."_s });
+    // https://w3c-fedid.github.io/digital-credentials/#dom-digitalcredential-discoverfromexternalsource-origin-options-sameoriginwithancestors-slot step 5
+    if (!document.isFullyActiveDescendantOfTopLevelTraversableWithUserAttention()) {
+        promise.reject(Exception { ExceptionCode::NotAllowedError, "The document is not a fully active descendant of a top-level traversable with user attention."_s });
         return;
     }
 

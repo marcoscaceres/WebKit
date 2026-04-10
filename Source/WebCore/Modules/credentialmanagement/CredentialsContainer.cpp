@@ -39,8 +39,10 @@
 #include "JSDOMConvertNullable.h"
 #include "JSDigitalCredential.h"
 #include "LocalFrame.h"
+#include "MediationRequirement.h"
 #include "Navigator.h"
 #include "Page.h"
+#include "PermissionsPolicy.h"
 
 namespace WebCore {
 
@@ -51,14 +53,24 @@ CredentialsContainer::CredentialsContainer(WeakPtr<Document, WeakPtrImplWithEven
 
 void CredentialsContainer::get(CredentialRequestOptions&& options, CredentialPromise&& promise)
 {
-    // The following implements https://www.w3.org/TR/credential-management-1/#algorithm-request as of 4 August 2017
-    // with enhancement from 14 November 2017 Editor's Draft.
-    if (!performCommonChecks(options, promise)) {
+    // The following implements https://www.w3.org/TR/credential-management-1/#algorithm-request
+    if (!performCommonChecks(options, promise))
         return;
-    }
 
     Ref document = *this->document();
     if (options.digital) {
+        // https://www.w3.org/TR/credential-management-1/#algorithm-request step 8a
+        if (options.mediation == MediationRequirement::Conditional) {
+            promise.reject(Exception { ExceptionCode::TypeError, "Digital credentials do not support conditional mediation."_s });
+            return;
+        }
+
+        // https://www.w3.org/TR/credential-management-1/#algorithm-request step 11
+        if (!PermissionsPolicy::isFeatureEnabled(PermissionsPolicy::Feature::DigitalCredentialsGetRule, document, PermissionsPolicy::ShouldReportViolation::No)) {
+            promise.reject(Exception { ExceptionCode::NotAllowedError, "Third-party iframes are not allowed to call .get() unless explicitly allowed via Permissions Policy (digital-credentials-get)"_s });
+            return;
+        }
+
 #if HAVE(DIGITAL_CREDENTIALS_UI)
         DigitalCredential::discoverFromExternalSource(document, WTF::move(promise), WTF::move(options));
 #else
@@ -79,7 +91,6 @@ void CredentialsContainer::isCreate(CredentialCreationOptions&& options, Credent
     if (!performCommonChecks(options, promise))
         return;
 
-    // Extra.
     Ref document = *this->document();
     if (!document->hasFocus()) {
         promise.reject(Exception { ExceptionCode::NotAllowedError, "The document is not focused."_s });

@@ -4079,6 +4079,17 @@ bool Document::isFullyActive() const
     return parentFrame->document() && protect(parentFrame->document())->isFullyActive();
 }
 
+// https://html.spec.whatwg.org/multipage/interaction.html#fully-active-descendant-of-a-top-level-traversable-with-user-attention
+bool Document::isFullyActiveDescendantOfTopLevelTraversableWithUserAttention() const
+{
+    if (!isFullyActive())
+        return false;
+    RefPtr page = this->page();
+    if (!page)
+        return false;
+    return page->isVisibleAndActive();
+}
+
 void Document::detachParser()
 {
     if (RefPtr parser = std::exchange(m_parser, nullptr))

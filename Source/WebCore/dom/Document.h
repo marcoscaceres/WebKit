@@ -1243,6 +1243,7 @@ public:
     WEBCORE_EXPORT void updateCachedCookiesEnabled();
 
     WEBCORE_EXPORT bool isFullyActive() const;
+    bool isFullyActiveDescendantOfTopLevelTraversableWithUserAttention() const;
 
     // The full URL corresponding to the "site for cookies" in the Same-Site Cookies spec.,
     // <https://tools.ietf.org/html/draft-ietf-httpbis-cookie-same-site-00>. It is either

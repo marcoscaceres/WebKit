@@ -126,7 +126,7 @@ CredentialPromise* CredentialRequestCoordinator::currentPromise()
 void CredentialRequestCoordinator::prepareCredentialRequest(const Document& document, CredentialPromise&& promise, Vector<UnvalidatedDigitalCredentialRequest>&& unvalidatedRequests, RefPtr<AbortSignal> signal)
 {
     if (m_state != PickerState::Idle)
-        return promise.reject(ExceptionCode::InvalidStateError, "A credential picker operation is already in progress."_s);
+        return promise.reject(ExceptionCode::NotAllowedError, "A credential picker operation is already in progress."_s);
 
     if (!m_page)
         return promise.reject(ExceptionCode::AbortError, "Page was destroyed."_s);
