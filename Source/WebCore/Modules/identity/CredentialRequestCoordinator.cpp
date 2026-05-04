@@ -46,6 +46,7 @@
 #include "JSValueInWrappedObjectInlines.h"
 #include "Page.h"
 #include "SecurityOriginData.h"
+#include "TaskSource.h"
 #include <JavaScriptCore/JSObject.h>
 #include <Logging.h>
 #include <wtf/TZoneMallocInlines.h>
@@ -71,7 +72,8 @@ CredentialRequestCoordinator::CredentialRequestCoordinator(Ref<CredentialRequest
 CredentialRequestCoordinator::InteractionStateGuard::InteractionStateGuard(CredentialRequestCoordinator& coordinator)
     : m_coordinator(coordinator)
 {
-    ASSERT(coordinator.interactionState() == InteractionState::Requesting);
+    ASSERT(coordinator.interactionState() == InteractionState::Requesting
+        || coordinator.interactionState() == InteractionState::Aborting);
 }
 
 CredentialRequestCoordinator::InteractionStateGuard::~InteractionStateGuard()
@@ -126,8 +128,12 @@ CredentialPromise* CredentialRequestCoordinator::currentPromise()
 
 void CredentialRequestCoordinator::prepareCredentialRequests(const Document& document, CredentialPromise&& promise, Vector<UnvalidatedDigitalCredentialRequest>&& unvalidatedRequests, RefPtr<AbortSignal> signal)
 {
-    if (m_interactionState != InteractionState::Idle)
-        return promise.reject(ExceptionCode::NotAllowedError, "A credential request is already in progress."_s);
+    if (m_interactionState != InteractionState::Idle) {
+        queueTaskKeepingObjectAlive(*this, TaskSource::DOMManipulation, [promise = makeUnique<CredentialPromise>(WTF::move(promise))](auto&) mutable {
+            promise->reject(ExceptionCode::NotAllowedError, "A credential request is already in progress."_s);
+        });
+        return;
+    }
 
     ASSERT(!m_currentPromise);
     setInteractionState(InteractionState::Requesting);
@@ -206,18 +212,37 @@ void CredentialRequestCoordinator::initiateTheCredentialRequest(Expected<Digital
     if (responseData.responseDataJSON.isEmpty())
         return rejectTheCredentialRequestWith(Exception { ExceptionCode::NotAllowedError, "The user cancelled the credential request."_s });
 
-    auto parsedObject = parseDigitalCredentialsResponseData(responseData.responseDataJSON);
+    clearAbortAlgorithm();
+    queueTaskKeepingObjectAlive(*this, TaskSource::DOMManipulation, [responseDataJSON = responseData.responseDataJSON, protocol = responseData.protocol](auto& coordinator) mutable {
+        if (!coordinator.hasCurrentPromise()) {
+            coordinator.setInteractionState(InteractionState::Idle);
+            return;
+        }
 
-    if (parsedObject.hasException())
-        return rejectTheCredentialRequestWith(parsedObject.releaseException());
+        auto parsedObject = coordinator.parseDigitalCredentialsResponseData(responseDataJSON);
 
-    if (!parsedObject.returnValue())
-        return rejectTheCredentialRequestWith(Exception { ExceptionCode::TypeError, "No parsed object."_s });
+        if (parsedObject.hasException()) {
+            auto promise = WTF::move(coordinator.m_currentPromise);
+            promise->reject(parsedObject.releaseException());
+            coordinator.setInteractionState(InteractionState::Idle);
+            return;
+        }
 
-    auto returnValue = parsedObject.releaseReturnValue();
-    Ref credential = DigitalCredential::create({ returnValue->vm(), returnValue }, responseData.protocol);
+        if (!parsedObject.returnValue()) {
+            auto promise = WTF::move(coordinator.m_currentPromise);
+            promise->reject(Exception { ExceptionCode::TypeError, "Parsed JSON data is not an object."_s });
+            coordinator.setInteractionState(InteractionState::Idle);
+            return;
+        }
 
-    rejectTheCredentialRequestWith(credential.ptr());
+        auto returnValue = parsedObject.releaseReturnValue();
+        Ref credential = DigitalCredential::create({ returnValue->vm(), returnValue }, protocol);
+
+        auto promise = WTF::move(coordinator.m_currentPromise);
+        promise->resolve(credential.ptr());
+
+        coordinator.setInteractionState(InteractionState::Idle);
+    });
 }
 
 ExceptionOr<JSC::JSObject*> CredentialRequestCoordinator::parseDigitalCredentialsResponseData(const String& responseDataJSON) const
@@ -256,29 +281,22 @@ ExceptionOr<JSC::JSObject*> CredentialRequestCoordinator::parseDigitalCredential
     return parsedJSON.getObject();
 }
 
-void CredentialRequestCoordinator::rejectTheCredentialRequestWith(ExceptionOr<RefPtr<BasicCredential>>&& result)
+void CredentialRequestCoordinator::rejectTheCredentialRequestWith(Exception&& error)
 {
-    clearAbortAlgorithm();
-
-    auto promise = WTF::move(m_currentPromise);
-    m_currentPromise.reset();
-
     ASSERT(m_interactionState == InteractionState::Requesting || m_interactionState == InteractionState::Aborting);
 
-    m_client->dismissDigitalCredentialsChooser([weakThis = WeakPtr { *this }, promise = WTF::move(promise), result = WTF::move(result)](bool success) mutable {
-        if (!success)
-            LOG(DigitalCredentials, "Failed to dismiss the credentials picker.");
+    clearAbortAlgorithm();
 
-        if (auto* rawThis = weakThis.get())
-            rawThis->setInteractionState(InteractionState::Idle);
-
-        if (!promise)
+    queueTaskKeepingObjectAlive(*this, TaskSource::DOMManipulation, [error = WTF::move(error)](auto& coordinator) mutable {
+        if (!coordinator.hasCurrentPromise()) {
+            coordinator.setInteractionState(InteractionState::Idle);
             return;
+        }
 
-        if (result.hasException())
-            promise->reject(result.releaseException());
-        else
-            promise->resolve(result.releaseReturnValue().get());
+        auto promise = WTF::move(coordinator.m_currentPromise);
+        promise->reject(WTF::move(error));
+
+        coordinator.setInteractionState(InteractionState::Idle);
     });
 }
 
@@ -299,31 +317,29 @@ void CredentialRequestCoordinator::abortTheCredentialRequest(ExceptionOr<JSC::JS
 {
     clearAbortAlgorithm();
     if (m_interactionState == InteractionState::Idle) {
-        // No UI teardown needed. Settle (defensively) and return.
         if (m_currentPromise) {
-            if (reason.hasException())
-                m_currentPromise->reject(reason.releaseException());
-            else
-                m_currentPromise->rejectType<IDLAny>(reason.releaseReturnValue());
-            m_currentPromise.reset();
+            queueTaskKeepingObjectAlive(*this, TaskSource::DOMManipulation, [reason = WTF::move(reason)](auto& coordinator) mutable {
+                if (!coordinator.hasCurrentPromise())
+                    return;
+                auto promise = WTF::move(coordinator.m_currentPromise);
+                if (reason.hasException())
+                    promise->reject(reason.releaseException());
+                else
+                    promise->template rejectType<IDLAny>(reason.releaseReturnValue());
+            });
         }
         return;
     }
 
-    if (m_interactionState == InteractionState::Aborting) {
-        ASSERT(!m_currentPromise);
+    if (m_interactionState == InteractionState::Aborting)
         return;
-    }
 
     if (m_interactionState != InteractionState::Requesting) {
-        LOG(DigitalCredentials, "Cannot abort the credentials picker when it is not presenting.");
+        LOG(DigitalCredentials, "Cannot abort the credential request when it is not requesting.");
         return;
     }
 
     setInteractionState(InteractionState::Aborting);
-
-    auto promise = WTF::move(m_currentPromise);
-    m_currentPromise.reset();
 
     std::optional<Exception> abortException;
     std::optional<JSC::Strong<JSC::Unknown>> protectedReason;
@@ -344,23 +360,31 @@ void CredentialRequestCoordinator::abortTheCredentialRequest(ExceptionOr<JSC::JS
     }
 
     m_client->dismissDigitalCredentialsChooser(
-        [weakThis = WeakPtr { *this }, promise = WTF::move(promise), abortException = WTF::move(abortException), protectedReason = WTF::move(protectedReason)](bool success) mutable {
+        [weakThis = WeakPtr { *this }, abortException = WTF::move(abortException), protectedReason = WTF::move(protectedReason)](bool success) mutable {
             if (!success)
-                LOG(DigitalCredentials, "Failed to dismiss the credentials picker.");
+                LOG(DigitalCredentials, "Failed to dismiss the credentials chooser.");
 
-            if (auto* rawThis = weakThis.get())
-                rawThis->setInteractionState(InteractionState::Idle);
-
-            if (!promise)
+            RefPtr protectedThis = weakThis.get();
+            if (!protectedThis)
                 return;
 
-            if (abortException)
-                return promise->reject(WTF::move(*abortException));
+            queueTaskKeepingObjectAlive(*protectedThis, TaskSource::DOMManipulation, [abortException = WTF::move(abortException), protectedReason = WTF::move(protectedReason)](auto& coordinator) mutable {
+                if (!coordinator.hasCurrentPromise()) {
+                    coordinator.setInteractionState(InteractionState::Idle);
+                    return;
+                }
 
-            if (protectedReason)
-                return promise->rejectType<IDLAny>(protectedReason->get());
+                auto promise = WTF::move(coordinator.m_currentPromise);
 
-            promise->reject(ExceptionCode::AbortError);
+                if (abortException)
+                    promise->reject(WTF::move(*abortException));
+                else if (protectedReason)
+                    promise->template rejectType<IDLAny>(protectedReason->get());
+                else
+                    promise->reject(ExceptionCode::AbortError);
+
+                coordinator.setInteractionState(InteractionState::Idle);
+            });
         });
 }
 
@@ -368,6 +392,7 @@ void CredentialRequestCoordinator::contextDestroyed()
 {
     LOG(DigitalCredentials, "The context we were observing got destroyed");
     abortTheCredentialRequest(Exception { ExceptionCode::AbortError, "script execution context was destroyed."_s });
+    ActiveDOMObject::contextDestroyed();
 };
 
 CredentialRequestCoordinator::~CredentialRequestCoordinator()

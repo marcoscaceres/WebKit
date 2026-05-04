@@ -67,7 +67,7 @@ public:
     void contextDestroyed() final;
 
 private:
-    void rejectTheCredentialRequestWith(ExceptionOr<RefPtr<BasicCredential>>&&);
+    void rejectTheCredentialRequestWith(Exception&&);
     void clearAbortAlgorithm();
 
     class InteractionStateGuard final {
