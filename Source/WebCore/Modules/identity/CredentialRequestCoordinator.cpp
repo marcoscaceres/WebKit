@@ -129,8 +129,12 @@ void CredentialRequestCoordinator::prepareCredentialRequests(const Document& doc
     if (m_interactionState != InteractionState::Idle)
         return promise.reject(ExceptionCode::InvalidStateError, "A credential picker operation is already in progress."_s);
 
+    ASSERT(!m_currentPromise);
+    setInteractionState(InteractionState::Requesting);
+    setCurrentPromise(WTF::move(promise));
+
     if (!m_page)
-        return promise.reject(ExceptionCode::AbortError, "Page was destroyed."_s);
+        return rejectTheCredentialRequestWith(Exception { ExceptionCode::AbortError, "Page was destroyed."_s });
 
     auto validatedRequestsOrException = m_client->validateAndParseDigitalCredentialRequests(
         protect(document.topOrigin()),
@@ -138,18 +142,20 @@ void CredentialRequestCoordinator::prepareCredentialRequests(const Document& doc
         unvalidatedRequests);
 
     if (validatedRequestsOrException.hasException())
-        return promise.reject(validatedRequestsOrException.releaseException());
+        return rejectTheCredentialRequestWith(validatedRequestsOrException.releaseException());
 
-    setCurrentPromise(WTF::move(promise));
+    auto validatedCredentialRequests = validatedRequestsOrException.releaseReturnValue();
+
+    if (validatedCredentialRequests.isEmpty())
+        return rejectTheCredentialRequestWith(Exception { ExceptionCode::TypeError, "No supported credential requests after validation."_s });
 
     if (signal) {
-        // CredentialsContainer handled rejecting pre-aborted signal
         ASSERT(!signal->aborted());
         m_abortSignal = signal;
         m_abortAlgorithmIdentifier = signal->addAlgorithm([weakThis = WeakPtr { *this }, signal = RefPtr { signal }](JSC::JSValue reason) {
             if (!weakThis)
                 return;
-            LOG(DigitalCredentials, "Credential picker was aborted by AbortSignal");
+            LOG(DigitalCredentials, "Credential request was aborted by AbortSignal");
             weakThis->abortTheCredentialRequest(ExceptionOr<JSC::JSValue> { WTF::move(reason) });
         });
     }
@@ -157,13 +163,10 @@ void CredentialRequestCoordinator::prepareCredentialRequests(const Document& doc
     if (signal && signal->aborted())
         return;
 
-    auto validatedCredentialRequests = validatedRequestsOrException.releaseReturnValue();
-
     auto requestDataAndRawRequests = DigitalCredentialsRequestDataBuilder::build(validatedCredentialRequests, document, WTF::move(unvalidatedRequests));
     if (requestDataAndRawRequests.hasException())
-        return promise.reject(requestDataAndRawRequests.releaseException());
+        return rejectTheCredentialRequestWith(requestDataAndRawRequests.releaseException());
 
-    setInteractionState(InteractionState::Requesting);
     observeContext(protect(document.scriptExecutionContext()).get());
 
     auto [requestData, rawRequests] = requestDataAndRawRequests.releaseReturnValue();
