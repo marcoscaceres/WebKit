@@ -68,49 +68,49 @@ CredentialRequestCoordinator::CredentialRequestCoordinator(Ref<CredentialRequest
 {
 }
 
-CredentialRequestCoordinator::PickerStateGuard::PickerStateGuard(CredentialRequestCoordinator& coordinator)
+CredentialRequestCoordinator::InteractionStateGuard::InteractionStateGuard(CredentialRequestCoordinator& coordinator)
     : m_coordinator(coordinator)
 {
-    ASSERT(coordinator.currentState() == PickerState::Presenting);
+    ASSERT(coordinator.interactionState() == InteractionState::Requesting);
 }
 
-CredentialRequestCoordinator::PickerStateGuard::~PickerStateGuard()
+CredentialRequestCoordinator::InteractionStateGuard::~InteractionStateGuard()
 {
     if (!m_active)
         return;
 
-    ASSERT(m_coordinator->currentState() == PickerState::Presenting
-        || m_coordinator->currentState() == PickerState::Aborting);
+    ASSERT(m_coordinator->interactionState() == InteractionState::Requesting
+        || m_coordinator->interactionState() == InteractionState::Aborting);
 
-    m_coordinator->setState(PickerState::Idle);
+    m_coordinator->setInteractionState(InteractionState::Idle);
 }
 
-CredentialRequestCoordinator::PickerState CredentialRequestCoordinator::currentState() const
+CredentialRequestCoordinator::InteractionState CredentialRequestCoordinator::interactionState() const
 {
-    return m_state;
+    return m_interactionState;
 }
 
-bool CredentialRequestCoordinator::canTransitionTo(PickerState newState) const
+bool CredentialRequestCoordinator::canTransitionTo(InteractionState newState) const
 {
-    switch (m_state) {
-    case PickerState::Idle:
-        return newState == PickerState::Presenting;
-    case PickerState::Presenting:
-        return newState == PickerState::Aborting || newState == PickerState::Idle;
-    case PickerState::Aborting:
-        return newState == PickerState::Idle;
+    switch (m_interactionState) {
+    case InteractionState::Idle:
+        return newState == InteractionState::Requesting;
+    case InteractionState::Requesting:
+        return newState == InteractionState::Aborting || newState == InteractionState::Idle;
+    case InteractionState::Aborting:
+        return newState == InteractionState::Idle;
     }
     ASSERT_NOT_REACHED();
     return false;
 }
 
-void CredentialRequestCoordinator::setState(PickerState newState)
+void CredentialRequestCoordinator::setInteractionState(InteractionState newState)
 {
-    if (m_state == newState)
+    if (m_interactionState == newState)
         return;
 
     ASSERT(canTransitionTo(newState));
-    m_state = newState;
+    m_interactionState = newState;
 }
 
 void CredentialRequestCoordinator::setCurrentPromise(CredentialPromise&& promise)
@@ -124,9 +124,9 @@ CredentialPromise* CredentialRequestCoordinator::currentPromise()
     return m_currentPromise.get();
 }
 
-void CredentialRequestCoordinator::prepareCredentialRequest(const Document& document, CredentialPromise&& promise, Vector<UnvalidatedDigitalCredentialRequest>&& unvalidatedRequests, RefPtr<AbortSignal> signal)
+void CredentialRequestCoordinator::prepareCredentialRequests(const Document& document, CredentialPromise&& promise, Vector<UnvalidatedDigitalCredentialRequest>&& unvalidatedRequests, RefPtr<AbortSignal> signal)
 {
-    if (m_state != PickerState::Idle)
+    if (m_interactionState != InteractionState::Idle)
         return promise.reject(ExceptionCode::InvalidStateError, "A credential picker operation is already in progress."_s);
 
     if (!m_page)
@@ -150,7 +150,7 @@ void CredentialRequestCoordinator::prepareCredentialRequest(const Document& docu
             if (!weakThis)
                 return;
             LOG(DigitalCredentials, "Credential picker was aborted by AbortSignal");
-            weakThis->abortPicker(ExceptionOr<JSC::JSValue> { WTF::move(reason) });
+            weakThis->abortTheCredentialRequest(ExceptionOr<JSC::JSValue> { WTF::move(reason) });
         });
     }
 
@@ -163,29 +163,29 @@ void CredentialRequestCoordinator::prepareCredentialRequest(const Document& docu
     if (requestDataAndRawRequests.hasException())
         return promise.reject(requestDataAndRawRequests.releaseException());
 
-    setState(PickerState::Presenting);
+    setInteractionState(InteractionState::Requesting);
     observeContext(protect(document.scriptExecutionContext()).get());
 
     auto [requestData, rawRequests] = requestDataAndRawRequests.releaseReturnValue();
 
-    m_client->showDigitalCredentialsPicker(
+    m_client->showDigitalCredentialsChooser(
         WTF::move(rawRequests),
         requestData,
         [weakThis = WeakPtr { *this }, signal](Expected<DigitalCredentialsResponseData, ExceptionData>&& responseOrException) {
             if (RefPtr protectedThis = weakThis.get())
-                protectedThis->handleDigitalCredentialsPickerResult(WTF::move(responseOrException), signal);
+                protectedThis->initiateTheCredentialRequest(WTF::move(responseOrException), signal);
         });
 }
 
-void CredentialRequestCoordinator::handleDigitalCredentialsPickerResult(Expected<DigitalCredentialsResponseData, ExceptionData>&& responseOrException, RefPtr<AbortSignal> signal)
+void CredentialRequestCoordinator::initiateTheCredentialRequest(Expected<DigitalCredentialsResponseData, ExceptionData>&& responseOrException, RefPtr<AbortSignal> signal)
 {
     if (signal && signal->aborted()) {
         LOG(DigitalCredentials, "Credential picker result received after AbortSignal aborted");
-        abortPicker(ExceptionOr<JSC::JSValue> { signal->reason().getValue() });
+        abortTheCredentialRequest(ExceptionOr<JSC::JSValue> { signal->reason().getValue() });
         return;
     }
 
-    PickerStateGuard guard(*this);
+    InteractionStateGuard guard(*this);
 
     if (!m_currentPromise) {
         LOG(DigitalCredentials, "No current promise in coordinator.");
@@ -196,25 +196,25 @@ void CredentialRequestCoordinator::handleDigitalCredentialsPickerResult(Expected
     guard.deactivate();
 
     if (!responseOrException)
-        return dismissPickerAndSettle(responseOrException.error().toException());
+        return rejectTheCredentialRequestWith(responseOrException.error().toException());
 
     auto& responseData = responseOrException.value();
 
     if (responseData.responseDataJSON.isEmpty())
-        return dismissPickerAndSettle(Exception { ExceptionCode::AbortError, "User aborted the operation."_s });
+        return rejectTheCredentialRequestWith(Exception { ExceptionCode::AbortError, "User aborted the operation."_s });
 
     auto parsedObject = parseDigitalCredentialsResponseData(responseData.responseDataJSON);
 
     if (parsedObject.hasException())
-        return dismissPickerAndSettle(parsedObject.releaseException());
+        return rejectTheCredentialRequestWith(parsedObject.releaseException());
 
     if (!parsedObject.returnValue())
-        return dismissPickerAndSettle(Exception { ExceptionCode::TypeError, "No parsed object."_s });
+        return rejectTheCredentialRequestWith(Exception { ExceptionCode::TypeError, "No parsed object."_s });
 
     auto returnValue = parsedObject.releaseReturnValue();
     Ref credential = DigitalCredential::create({ returnValue->vm(), returnValue }, responseData.protocol);
 
-    dismissPickerAndSettle(credential.ptr());
+    rejectTheCredentialRequestWith(credential.ptr());
 }
 
 ExceptionOr<JSC::JSObject*> CredentialRequestCoordinator::parseDigitalCredentialsResponseData(const String& responseDataJSON) const
@@ -253,21 +253,21 @@ ExceptionOr<JSC::JSObject*> CredentialRequestCoordinator::parseDigitalCredential
     return parsedJSON.getObject();
 }
 
-void CredentialRequestCoordinator::dismissPickerAndSettle(ExceptionOr<RefPtr<BasicCredential>>&& result)
+void CredentialRequestCoordinator::rejectTheCredentialRequestWith(ExceptionOr<RefPtr<BasicCredential>>&& result)
 {
     clearAbortAlgorithm();
 
     auto promise = WTF::move(m_currentPromise);
     m_currentPromise.reset();
 
-    ASSERT(m_state == PickerState::Presenting || m_state == PickerState::Aborting);
+    ASSERT(m_interactionState == InteractionState::Requesting || m_interactionState == InteractionState::Aborting);
 
-    m_client->dismissDigitalCredentialsPicker([weakThis = WeakPtr { *this }, promise = WTF::move(promise), result = WTF::move(result)](bool success) mutable {
+    m_client->dismissDigitalCredentialsChooser([weakThis = WeakPtr { *this }, promise = WTF::move(promise), result = WTF::move(result)](bool success) mutable {
         if (!success)
             LOG(DigitalCredentials, "Failed to dismiss the credentials picker.");
 
         if (auto* rawThis = weakThis.get())
-            rawThis->setState(PickerState::Idle);
+            rawThis->setInteractionState(InteractionState::Idle);
 
         if (!promise)
             return;
@@ -292,10 +292,10 @@ void CredentialRequestCoordinator::clearAbortAlgorithm()
     m_abortSignal = nullptr;
 }
 
-void CredentialRequestCoordinator::abortPicker(ExceptionOr<JSC::JSValue>&& reason)
+void CredentialRequestCoordinator::abortTheCredentialRequest(ExceptionOr<JSC::JSValue>&& reason)
 {
     clearAbortAlgorithm();
-    if (m_state == PickerState::Idle) {
+    if (m_interactionState == InteractionState::Idle) {
         // No UI teardown needed. Settle (defensively) and return.
         if (m_currentPromise) {
             if (reason.hasException())
@@ -307,17 +307,17 @@ void CredentialRequestCoordinator::abortPicker(ExceptionOr<JSC::JSValue>&& reaso
         return;
     }
 
-    if (m_state == PickerState::Aborting) {
+    if (m_interactionState == InteractionState::Aborting) {
         ASSERT(!m_currentPromise);
         return;
     }
 
-    if (m_state != PickerState::Presenting) {
+    if (m_interactionState != InteractionState::Requesting) {
         LOG(DigitalCredentials, "Cannot abort the credentials picker when it is not presenting.");
         return;
     }
 
-    setState(PickerState::Aborting);
+    setInteractionState(InteractionState::Aborting);
 
     auto promise = WTF::move(m_currentPromise);
     m_currentPromise.reset();
@@ -340,13 +340,13 @@ void CredentialRequestCoordinator::abortPicker(ExceptionOr<JSC::JSValue>&& reaso
         }
     }
 
-    m_client->dismissDigitalCredentialsPicker(
+    m_client->dismissDigitalCredentialsChooser(
         [weakThis = WeakPtr { *this }, promise = WTF::move(promise), abortException = WTF::move(abortException), protectedReason = WTF::move(protectedReason)](bool success) mutable {
             if (!success)
                 LOG(DigitalCredentials, "Failed to dismiss the credentials picker.");
 
             if (auto* rawThis = weakThis.get())
-                rawThis->setState(PickerState::Idle);
+                rawThis->setInteractionState(InteractionState::Idle);
 
             if (!promise)
                 return;
@@ -364,7 +364,7 @@ void CredentialRequestCoordinator::abortPicker(ExceptionOr<JSC::JSValue>&& reaso
 void CredentialRequestCoordinator::contextDestroyed()
 {
     LOG(DigitalCredentials, "The context we were observing got destroyed");
-    abortPicker(Exception { ExceptionCode::AbortError, "script execution context was destroyed."_s });
+    abortTheCredentialRequest(Exception { ExceptionCode::AbortError, "script execution context was destroyed."_s });
 };
 
 CredentialRequestCoordinator::~CredentialRequestCoordinator()
