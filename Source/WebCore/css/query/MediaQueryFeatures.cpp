@@ -31,6 +31,7 @@
 #include "DocumentLoader.h"
 #include "DocumentPage.h"
 #include "DocumentQuirks.h"
+#include "DocumentSecurityOrigin.h"
 #include "DocumentView.h"
 #include "FrameDestructionObserverInlines.h"
 #include "LocalFrame.h"
@@ -761,6 +762,32 @@ static const IdentifierSchema& displayModeFeatureSchema()
     };
     return schema;
 }
+
+static const IdentifierSchema& applicationContextFeatureSchema()
+{
+    static MainThreadNeverDestroyed<IdentifierSchema> schema {
+        "application-context"_s,
+        FixedVector { CSSValueBrowser, CSSValueInstalled },
+        MediaQueryDynamicDependency::ApplicationContext,
+        [](auto& context) {
+            if (!context.document->isSameOriginAsTopDocument())
+                return MatchingIdentifiers { CSSValueBrowser };
+            RefPtr frame = context.document->frame();
+            if (!frame)
+                return MatchingIdentifiers { CSSValueBrowser };
+            if (RefPtr view = frame->view(); view && view->mediaType() != screenAtom())
+                return MatchingIdentifiers { CSSValueBrowser };
+            // Settings is a per-Page singleton, so under site isolation a
+            // RemoteFrame main frame's standalone bit is propagated to this
+            // process's Page settings; the local-frame fallback is therefore
+            // equivalent to reading the top-level main frame's settings.
+            RefPtr mainFrame = dynamicDowncast<LocalFrame>(frame->mainFrame());
+            bool standalone = mainFrame ? mainFrame->settings().standalone() : frame->settings().standalone();
+            return MatchingIdentifiers { standalone ? CSSValueInstalled : CSSValueBrowser };
+        }
+    };
+    return schema;
+}
 #endif
 
 static const IdentifierSchema& overflowBlockFeatureSchema()
@@ -1006,6 +1033,11 @@ const FeatureSchema& width()
 }
 
 #if ENABLE(APPLICATION_MANIFEST)
+const FeatureSchema& applicationContext()
+{
+    return applicationContextFeatureSchema();
+}
+
 const FeatureSchema& displayMode()
 {
     return displayModeFeatureSchema();
@@ -1067,6 +1099,7 @@ Vector<const FeatureSchema*> allSchemas()
         &videoPlayableInline(),
         &width(),
 #if ENABLE(APPLICATION_MANIFEST)
+        &applicationContext(),
         &displayMode(),
 #endif
 #if ENABLE(DARK_MODE_CSS)

@@ -1,0 +1,109 @@
+<script>
+if (window.testRunner) {
+    testRunner.dumpAsText();
+    testRunner.waitUntilDone();
+}
+</script>
+<style>
+.installed-css { display: none; }
+.browser-css { display: none; }
+.level4-not-css { display: none; }
+.bogus-css { display: none; }
+.none-css { display: none; }
+@media (application-context: installed) {
+    .installed-css { display: inline; }
+}
+@media (application-context: browser) {
+    .browser-css { display: inline; }
+}
+@media (not (application-context: installed)) {
+    .level4-not-css { display: inline; }
+}
+@media (application-context: bogus) {
+    .bogus-css { display: inline; }
+}
+@media (application-context: none) {
+    .none-css { display: inline; }
+}
+</style>
+<body>
+<span class="installed-css">[installed]</span>
+<span class="browser-css">[browser]</span>
+<span class="level4-not-css">[level4-not-installed]</span>
+<span class="bogus-css">[bogus-should-not-match]</span>
+<span class="none-css">[none-should-not-match]</span>
+<div id="output"></div>
+<script>
+const output = document.getElementById("output");
+function log(msg) {
+    const p = document.createElement("p");
+    p.textContent = msg;
+    output.appendChild(p);
+}
+
+function readAll(label) {
+    log("=== " + label + " ===");
+    log("(application-context: installed): " + window.matchMedia("(application-context: installed)").matches);
+    log("(application-context: browser): " + window.matchMedia("(application-context: browser)").matches);
+    log("(not (application-context: installed)): " + window.matchMedia("(not (application-context: installed))").matches);
+}
+
+log("=== CSS @media (default: standalone=false) ===");
+log(".installed-css visible: " + (getComputedStyle(document.querySelector(".installed-css")).display !== "none"));
+log(".browser-css visible: " + (getComputedStyle(document.querySelector(".browser-css")).display !== "none"));
+log(".level4-not-css visible: " + (getComputedStyle(document.querySelector(".level4-not-css")).display !== "none"));
+log(".bogus-css visible: " + (getComputedStyle(document.querySelector(".bogus-css")).display !== "none"));
+log(".none-css visible: " + (getComputedStyle(document.querySelector(".none-css")).display !== "none"));
+log("(application-context: bogus): " + window.matchMedia("(application-context: bogus)").matches);
+log("(application-context: none): " + window.matchMedia("(application-context: none)").matches);
+// Boolean shorthand `@media (application-context)` evaluates true per CSS
+// MQ5 because both defined values (`installed`, `browser`) are non-zero
+// identifiers. This mirrors `(display-mode)` and provides no information.
+log("(application-context) [boolean shorthand]: " + window.matchMedia("(application-context)").matches);
+
+readAll("matchMedia (default: standalone=false)");
+
+if (window.internals) {
+    // Subscribe BEFORE any toggles.
+    const installedMQL = window.matchMedia("(application-context: installed)");
+    const browserMQL = window.matchMedia("(application-context: browser)");
+    const events = [];
+    installedMQL.addEventListener("change", e => events.push("installed->" + e.matches));
+    browserMQL.addEventListener("change", e => events.push("browser->" + e.matches));
+
+    internals.settings.setStandalone(true);
+    readAll("matchMedia (after setStandalone(true))");
+
+    // Stylesheet @media rules MUST re-apply on standalone toggle (spec MUST:
+    // evaluate media queries and report changes). Re-read computed style.
+    log("=== CSS @media (after setStandalone(true)) ===");
+    log(".installed-css visible: " + (getComputedStyle(document.querySelector(".installed-css")).display !== "none"));
+    log(".browser-css visible: " + (getComputedStyle(document.querySelector(".browser-css")).display !== "none"));
+    log(".level4-not-css visible: " + (getComputedStyle(document.querySelector(".level4-not-css")).display !== "none"));
+
+    internals.settings.setStandalone(false);
+    readAll("matchMedia (after setStandalone(false))");
+
+    // Non-screen media: must be `browser` regardless of standalone.
+    // Test in isolation at the end since setPrinting/mediaType state may not cleanly reset.
+    internals.settings.setStandalone(true);
+    internals.setPrinting(800, 600);
+    readAll("matchMedia (standalone=true, print media)");
+
+    if (internals.settings.setMediaTypeOverride) {
+        internals.settings.setMediaTypeOverride("speech");
+        readAll("matchMedia (standalone=true, speech media)");
+    } else {
+        log("=== matchMedia (speech media) === SKIPPED: no setMediaTypeOverride");
+    }
+
+    setTimeout(() => {
+        log("=== change events fired ===");
+        events.forEach(e => log(e));
+        if (window.testRunner) testRunner.notifyDone();
+    }, 0);
+} else {
+    if (window.testRunner) testRunner.notifyDone();
+}
+</script>
+</body>

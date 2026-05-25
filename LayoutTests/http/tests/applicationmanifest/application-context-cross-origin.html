@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<title>application-context media feature: cross-origin iframe inheritance</title>
+<body>
+<script>
+if (window.testRunner) {
+    testRunner.dumpAsText();
+    testRunner.waitUntilDone();
+}
+
+const SAME_ORIGIN = "http://127.0.0.1:8000/applicationmanifest/resources/application-context-iframe.html";
+const CROSS_ORIGIN = "http://localhost:8000/applicationmanifest/resources/application-context-iframe.html";
+
+function log(msg) {
+    const p = document.createElement("p");
+    p.textContent = msg;
+    document.body.appendChild(p);
+}
+
+async function getReport(iframe) {
+    return new Promise(resolve => {
+        const handler = e => {
+            if (e.source !== iframe.contentWindow)
+                return;
+            window.removeEventListener("message", handler);
+            resolve(e.data);
+        };
+        window.addEventListener("message", handler);
+        iframe.contentWindow.postMessage("report", "*");
+    });
+}
+
+function loadIframe(src, sandbox) {
+    return new Promise(resolve => {
+        const iframe = document.createElement("iframe");
+        if (sandbox)
+            iframe.sandbox = sandbox;
+        iframe.src = src;
+        iframe.onload = () => resolve(iframe);
+        document.body.appendChild(iframe);
+    });
+}
+
+async function run() {
+    try {
+        if (!window.internals) {
+            log("FAIL: internals not available");
+            return;
+        }
+
+        // === standalone=false (default) ===
+        log(`Parent standalone=false. Parent (application-context: installed): ${window.matchMedia("(application-context: installed)").matches}`);
+        log(`Parent (application-context: browser): ${window.matchMedia("(application-context: browser)").matches}`);
+
+        const sameOriginFrame1 = await loadIframe(SAME_ORIGIN);
+        const sameOriginReport1 = await getReport(sameOriginFrame1);
+        log(`Same-origin iframe (standalone=false, ${sameOriginReport1.origin}):`);
+        log(`  (application-context: installed) = ${sameOriginReport1.installed} (expected: false)`);
+        log(`  (application-context: browser) = ${sameOriginReport1.browser} (expected: true)`);
+
+        const crossOriginFrame1 = await loadIframe(CROSS_ORIGIN);
+        const crossOriginReport1 = await getReport(crossOriginFrame1);
+        log(`Cross-origin iframe (standalone=false, ${crossOriginReport1.origin}):`);
+        log(`  (application-context: installed) = ${crossOriginReport1.installed} (expected: false)`);
+        log(`  (application-context: browser) = ${crossOriginReport1.browser} (expected: true)`);
+
+        // === standalone=true ===
+        internals.settings.setStandalone(true);
+        log(`Parent standalone=true. Parent (application-context: installed): ${window.matchMedia("(application-context: installed)").matches}`);
+        log(`Parent (application-context: browser): ${window.matchMedia("(application-context: browser)").matches}`);
+
+        const sameOriginFrame2 = await loadIframe(SAME_ORIGIN);
+        const sameOriginReport2 = await getReport(sameOriginFrame2);
+        log(`Same-origin iframe (standalone=true, ${sameOriginReport2.origin}):`);
+        log(`  (application-context: installed) = ${sameOriginReport2.installed} (expected: true)`);
+        log(`  (application-context: browser) = ${sameOriginReport2.browser} (expected: false)`);
+
+        const crossOriginFrame2 = await loadIframe(CROSS_ORIGIN);
+        const crossOriginReport2 = await getReport(crossOriginFrame2);
+        log(`Cross-origin iframe (standalone=true, ${crossOriginReport2.origin}):`);
+        log(`  (application-context: installed) = ${crossOriginReport2.installed} (expected: false)`);
+        log(`  (application-context: browser) = ${crossOriginReport2.browser} (expected: true)`);
+
+        const sandboxedFrame = await loadIframe(SAME_ORIGIN, "allow-scripts");
+        const sandboxedReport = await getReport(sandboxedFrame);
+        log(`Sandboxed iframe (standalone=true, origin: ${sandboxedReport.origin}):`);
+        log(`  (application-context: installed) = ${sandboxedReport.installed} (expected: false)`);
+        log(`  (application-context: browser) = ${sandboxedReport.browser} (expected: true)`);
+
+        const dataIframeScript = `
+            addEventListener('message', e => {
+                if (e.data === 'report') e.source.postMessage({
+                    origin: self.origin,
+                    installed: matchMedia('(application-context: installed)').matches,
+                    browser: matchMedia('(application-context: browser)').matches,
+                }, '*');
+            });
+        `;
+        const dataUrl = `data:text/html,<script>${encodeURIComponent(dataIframeScript)}\x3c/script>`;
+        const dataFrame = await loadIframe(dataUrl);
+        const dataReport = await getReport(dataFrame);
+        log(`data: URL iframe (standalone=true, origin: ${dataReport.origin}):`);
+        log(`  (application-context: installed) = ${dataReport.installed} (expected: false)`);
+        log(`  (application-context: browser) = ${dataReport.browser} (expected: true)`);
+    } catch (e) {
+        log(`ERROR: ${e.message}`);
+    } finally {
+        if (window.testRunner) testRunner.notifyDone();
+    }
+}
+
+run();
+</script>
+</body>

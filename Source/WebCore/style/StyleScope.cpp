@@ -814,6 +814,13 @@ void Scope::evaluateMediaQueriesForAppearanceChange()
     });
 }
 
+void Scope::evaluateMediaQueriesForApplicationContextChange()
+{
+    evaluateMediaQueries([] (Resolver& resolver) {
+        return resolver.evaluateDynamicMediaQueries();
+    });
+}
+
 auto Scope::collectResolverScopes() -> ResolverScopes
 {
     ASSERT(!m_shadowRoot);

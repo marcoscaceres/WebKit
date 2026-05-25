@@ -4333,6 +4333,16 @@ void Page::useSystemAppearanceChanged()
     });
 }
 
+void Page::standaloneChanged()
+{
+    forEachDocument([](auto& document) {
+        document.styleScope().evaluateMediaQueriesForApplicationContextChange();
+        document.updateElementsAffectedByMediaQueries();
+        document.scheduleRenderingUpdate(RenderingUpdateStep::MediaQueryEvaluation);
+        document.evaluateMediaQueriesAndReportChanges();
+    });
+}
+
 void Page::setUseColorAppearance(bool useDarkAppearance, bool useElevatedUserInterfaceLevel)
 {
 #if ENABLE(DARK_MODE_CSS)

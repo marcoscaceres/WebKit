@@ -1,0 +1,49 @@
+Parent standalone=false. Parent (application-context: installed): false
+
+Parent (application-context: browser): true
+
+
+Same-origin iframe (standalone=false, http://127.0.0.1:8000):
+
+(application-context: installed) = false (expected: false)
+
+(application-context: browser) = true (expected: true)
+
+
+Cross-origin iframe (standalone=false, http://localhost:8000):
+
+(application-context: installed) = false (expected: false)
+
+(application-context: browser) = true (expected: true)
+
+Parent standalone=true. Parent (application-context: installed): true
+
+Parent (application-context: browser): false
+
+
+Same-origin iframe (standalone=true, http://127.0.0.1:8000):
+
+(application-context: installed) = true (expected: true)
+
+(application-context: browser) = false (expected: false)
+
+
+Cross-origin iframe (standalone=true, http://localhost:8000):
+
+(application-context: installed) = false (expected: false)
+
+(application-context: browser) = true (expected: true)
+
+
+Sandboxed iframe (standalone=true, origin: null):
+
+(application-context: installed) = false (expected: false)
+
+(application-context: browser) = true (expected: true)
+
+
+data: URL iframe (standalone=true, origin: null):
+
+(application-context: installed) = false (expected: false)
+
+(application-context: browser) = true (expected: true)

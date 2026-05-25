@@ -1,0 +1,84 @@
+[browser] [level4-not-installed]
+=== CSS @media (default: standalone=false) ===
+
+.installed-css visible: false
+
+.browser-css visible: true
+
+.level4-not-css visible: true
+
+.bogus-css visible: false
+
+.none-css visible: false
+
+(application-context: bogus): false
+
+(application-context: none): false
+
+(application-context) [boolean shorthand]: true
+
+=== matchMedia (default: standalone=false) ===
+
+(application-context: installed): false
+
+(application-context: browser): true
+
+(not (application-context: installed)): true
+
+=== matchMedia (after setStandalone(true)) ===
+
+(application-context: installed): true
+
+(application-context: browser): false
+
+(not (application-context: installed)): false
+
+=== CSS @media (after setStandalone(true)) ===
+
+.installed-css visible: true
+
+.browser-css visible: false
+
+.level4-not-css visible: false
+
+=== matchMedia (after setStandalone(false)) ===
+
+(application-context: installed): false
+
+(application-context: browser): true
+
+(not (application-context: installed)): true
+
+=== matchMedia (standalone=true, print media) ===
+
+(application-context: installed): false
+
+(application-context: browser): true
+
+(not (application-context: installed)): true
+
+=== matchMedia (standalone=true, speech media) ===
+
+(application-context: installed): false
+
+(application-context: browser): true
+
+(not (application-context: installed)): true
+
+=== change events fired ===
+
+installed->true
+
+browser->false
+
+installed->false
+
+browser->true
+
+installed->true
+
+browser->false
+
+installed->false
+
+browser->true

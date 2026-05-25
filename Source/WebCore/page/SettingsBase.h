@@ -168,6 +168,7 @@ protected:
 #endif
     void layerBasedSVGEngineEnabledChanged();
     void useSystemAppearanceChanged();
+    void standaloneChanged();
     void fontFallbackPrefersPictographsChanged();
     void updateDisplayEDRHeadroom();
 
