@@ -134,7 +134,7 @@ void CredentialRequestCoordinator::prepareCredentialRequests(const Document& doc
         return promise.reject(ExceptionCode::AbortError, "Page was destroyed."_s);
 
     auto validatedRequestsOrException = m_client->validateAndParseDigitalCredentialRequests(
-        protect(document.topOrigin()),
+        protect(document.securityOrigin()),
         document,
         unvalidatedRequests);
 
