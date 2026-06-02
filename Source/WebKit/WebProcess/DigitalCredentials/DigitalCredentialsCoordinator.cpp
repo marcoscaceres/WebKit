@@ -90,6 +90,8 @@ void DigitalCredentialsCoordinator::showDigitalCredentialsChooser(WebCore::Digit
 ExceptionOr<Vector<WebCore::ValidatedDigitalCredentialRequest>> DigitalCredentialsCoordinator::validateAndParseDigitalCredentialRequests(const SecurityOrigin& topOrigin, const Document& document, const Vector<UnvalidatedDigitalCredentialRequest>& unvalidatedRequests)
 {
     auto results = DigitalCredentials::validateRequests(topOrigin, document, unvalidatedRequests);
+    if (results.isEmpty())
+        return Exception { ExceptionCode::TypeError, "No valid credential requests remain after validation"_s };
     return WTF::move(results);
 }
 
