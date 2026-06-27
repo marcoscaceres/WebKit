@@ -1894,6 +1894,10 @@ void WebPageProxy::close()
 
     m_isClosed = true;
 
+#if ENABLE(WEB_AUTHN) && ENABLE(WEBDRIVER_BIDI)
+    abortPendingDigitalCredentialWaitHandlers("Page closed."_s);
+#endif
+
     // Make sure we do this before we clear the UIClient so that we can ask the UIClient
     // to release the wake locks.
     internals().sleepDisablers.clear();
@@ -11209,6 +11213,29 @@ void WebPageProxy::showDigitalCredentialsChooser(IPC::Connection& connection, st
             }
 #endif
 
+#if ENABLE(WEBDRIVER_BIDI)
+            // Test-only wallet actuation (no automation session); webkit.org/b/306292.
+            // Keep the respond/decline/wait/clear handling in lockstep with the WebDriver BiDi switch above.
+            if (const auto& testBehavior = internals().testingVirtualWalletBehavior) {
+                using VirtualWalletAction = Inspector::Protocol::BidiDigitalCredentials::VirtualWalletAction;
+                switch (testBehavior->action) {
+                case VirtualWalletAction::Wait:
+                    settlePendingTestingDigitalCredentialHandler("Superseded by a new digital credential request."_s);
+                    internals().testingPendingDigitalCredentialHandler = WTF::move(completionHandler);
+                    return;
+                case VirtualWalletAction::Decline:
+                    completionHandler(makeUnexpected(WebCore::ExceptionData { WebCore::ExceptionCode::NotAllowedError, "Virtual wallet declined the request."_s }));
+                    return;
+                case VirtualWalletAction::Respond:
+                    completionHandler(WebCore::DigitalCredentialsResponseData { testBehavior->protocol, testBehavior->responseJSON });
+                    return;
+                case VirtualWalletAction::Clear:
+                    ASSERT_NOT_REACHED();
+                    break;
+                }
+            }
+#endif
+
 #if HAVE(DIGITAL_CREDENTIALS_UI)
             MESSAGE_CHECK_COMPLETION_BASE(
                 requestData.topOrigin.securityOrigin()->isSameOriginDomain(SecurityOrigin::create(protect(mainFrame())->url())),
@@ -11223,6 +11250,56 @@ void WebPageProxy::showDigitalCredentialsChooser(IPC::Connection& connection, st
 #endif
     });
 }
+
+#if ENABLE(WEBDRIVER_BIDI)
+void WebPageProxy::settlePendingTestingDigitalCredentialHandler(ASCIILiteral rejectionMessage)
+{
+    if (auto handler = std::exchange(internals().testingPendingDigitalCredentialHandler, nullptr))
+        handler(makeUnexpected(WebCore::ExceptionData { WebCore::ExceptionCode::NotAllowedError, rejectionMessage }));
+}
+
+void WebPageProxy::abortPendingDigitalCredentialWaitHandlers(ASCIILiteral rejectionMessage)
+{
+    // Settle both places a "wait" request can be parked so a pending request is
+    // not left unsettled on dismissal/teardown: the WKTR mock handler and the
+    // automation agent's parked handler.
+    settlePendingTestingDigitalCredentialHandler(rejectionMessage);
+    if (auto contextID = std::exchange(m_pendingDigitalCredentialsWaitContextID, std::nullopt); contextID) {
+        if (RefPtr automationSession = configuration().processPool().automationSession())
+            automationSession->bidiProcessor().digitalCredentialsAgent().releasePendingHandler(*contextID);
+    }
+}
+
+void WebPageProxy::setVirtualWalletBehaviorForTesting(const String& action, const String& protocol, const String& responseJSON)
+{
+    using VirtualWalletAction = Inspector::Protocol::BidiDigitalCredentials::VirtualWalletAction;
+
+    if (action == "clear"_s) {
+        internals().testingVirtualWalletBehavior = std::nullopt;
+        settlePendingTestingDigitalCredentialHandler("Virtual wallet behavior cleared."_s);
+        return;
+    }
+
+    std::optional<VirtualWalletAction> parsedAction;
+    if (action == "respond"_s)
+        parsedAction = VirtualWalletAction::Respond;
+    else if (action == "decline"_s)
+        parsedAction = VirtualWalletAction::Decline;
+    else if (action == "wait"_s)
+        parsedAction = VirtualWalletAction::Wait;
+
+    if (!parsedAction) {
+        ASSERT_NOT_REACHED_WITH_MESSAGE("Unknown virtual wallet action: %s", action.utf8().data());
+        return;
+    }
+
+    settlePendingTestingDigitalCredentialHandler("Virtual wallet behavior replaced."_s);
+
+    // FIXME: Only org-iso-mdoc is supported, so the requested protocol is ignored (webkit.org/b/317545).
+    UNUSED_PARAM(protocol);
+    internals().testingVirtualWalletBehavior = VirtualWalletBehavior { *parsedAction, WebCore::DigitalCredentialPresentationProtocol::OrgIsoMdoc, responseJSON };
+}
+#endif
 
 void WebPageProxy::fetchRawDigitalCredentialRequests(CompletionHandler<void(WebCore::DigitalCredentialsRawRequests)>&& completionHandler)
 {
@@ -11242,10 +11319,7 @@ void WebPageProxy::dismissDigitalCredentialsChooser(IPC::Connection& connection,
     );
 #if ENABLE(WEB_AUTHN)
 #if ENABLE(WEBDRIVER_BIDI)
-    if (auto contextID = std::exchange(m_pendingDigitalCredentialsWaitContextID, std::nullopt)) {
-        if (RefPtr automationSession = configuration().processPool().automationSession())
-            automationSession->bidiProcessor().digitalCredentialsAgent().releasePendingHandler(*contextID);
-    }
+    abortPendingDigitalCredentialWaitHandlers("Digital credential request dismissed."_s);
 #endif
     protect(pageClient())->dismissDigitalCredentialsChooser(WTF::move(completionHandler));
 #else
@@ -13458,6 +13532,10 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
     m_focusedFrame = nullptr;
     m_suspendedPageKeptToPreventFlashing = nullptr;
     m_lastSuspendedPage = nullptr;
+
+#if ENABLE(WEB_AUTHN) && ENABLE(WEBDRIVER_BIDI)
+    abortPendingDigitalCredentialWaitHandlers("The page was reset."_s);
+#endif
 
 #if ENABLE(MODEL_ELEMENT_IMMERSIVE)
     m_allowedImmersiveElementFrameInfo = nullptr;

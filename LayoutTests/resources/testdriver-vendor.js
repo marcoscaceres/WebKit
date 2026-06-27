@@ -562,6 +562,14 @@ window.test_driver_internal.set_permission = async function(permission_params)
     }
 };
 
+// Digital Credentials virtual wallet actuation; see webkit.org/b/306292.
+window.test_driver_internal.set_virtual_wallet_behavior = async function(action, protocol = null, response = null, context = null)
+{
+    if (!window.testRunner || !testRunner.setVirtualWalletBehavior)
+        throw new Error("set_virtual_wallet_behavior is not supported.");
+    testRunner.setVirtualWalletBehavior(String(action), protocol != null ? String(protocol) : "", response != null ? JSON.stringify(response) : "");
+};
+
 /**
  *
  * @param {Window?} context
