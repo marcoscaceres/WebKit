@@ -52,6 +52,8 @@ extension WKIdentityDocumentPresentmentController {
 
         private var performRequestTask: Task<any IdentityDocumentWebPresentmentResponse, any Error>?
 
+        private var isCancelled = false
+
         weak var delegate: (any WKIdentityDocumentPresentmentDelegate)?
 
         init() {
@@ -61,6 +63,11 @@ extension WKIdentityDocumentPresentmentController {
         }
 
         func perform(request: WKIdentityDocumentPresentmentRequest) async throws -> WKIdentityDocumentPresentmentResponse {
+            if isCancelled {
+                Self.logger.debug("IdentityDocumentPresentmentController perform called after cancellation; not presenting")
+                throw WKIdentityDocumentPresentmentError(.cancelled)
+            }
+
             do {
                 Self.logger.debug("IdentityDocumentPresentmentController performRequest called with request \(String(describing: request))")
                 let convertedRequests = request.mobileDocumentRequests.map(ISO18013MobileDocumentRequest.init(_:))
@@ -99,12 +106,15 @@ extension WKIdentityDocumentPresentmentController {
                 default:
                     throw WKIdentityDocumentPresentmentError(.unknown, userInfo: userInfo)
                 }
+            } catch is CancellationError {
+                throw WKIdentityDocumentPresentmentError(.cancelled)
             } catch {
                 throw WKIdentityDocumentPresentmentError(.unknown)
             }
         }
 
         func cancelRequest() {
+            isCancelled = true
             performRequestTask?.cancel()
         }
     }
