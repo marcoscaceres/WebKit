@@ -379,6 +379,14 @@ window.test_driver_internal.send_keys = async function(element, keys)
  */
 window.test_driver_internal.click = async function (element, coords)
 {
+    // The synthetic bless() click can't reach an offset or cross-origin subframe, so grant
+    // the transient activation it needs directly.
+    const view = element.ownerDocument.defaultView || window;
+    if (element.id.startsWith("wpt-test-driver-bless-") && view !== view.top && view.internals) {
+        view.internals.withUserGesture(() => element.click());
+        return;
+    }
+
     if (testRunner.isIOSFamily && testRunner.isWebKit2) {
         await new Promise((resolve) => {
             testRunner.runUIScript(`
