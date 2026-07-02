@@ -346,6 +346,9 @@
 #endif
 
 #if ENABLE(MEDIA_STREAM)
+#if PLATFORM(COCOA)
+#include "AudioMediaStreamTrackRendererUnit.h"
+#endif
 #include "MediaStream.h"
 #include "MockRealtimeMediaSourceCenter.h"
 #include "VideoFrame.h"
@@ -6906,6 +6909,13 @@ bool Internals::supportsMultiMicrophoneCaptureWithoutEchoCancellation() const
     return true;
 #else
     return false;
+#endif
+}
+
+void Internals::deleteAudioUnit()
+{
+#if ENABLE(MEDIA_STREAM) && PLATFORM(COCOA)
+    AudioMediaStreamTrackRendererUnit::singleton().deleteUnitForTesting();
 #endif
 }
 
