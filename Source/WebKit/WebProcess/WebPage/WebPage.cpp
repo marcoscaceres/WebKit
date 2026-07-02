@@ -1415,7 +1415,7 @@ void WebPage::frameTreeSyncDataChangedInAnotherProcess(FrameIdentifier frameID, 
     if (coreFrame) {
         coreFrame->updateFrameTreeSyncData(data);
 
-        switch (data.type) {
+        switch (static_cast<FrameTreeSyncDataType>(data.value.index())) {
         case FrameTreeSyncDataType::FrameRect:
             frame->updateFrameRectFromRemote(coreFrame->frameTreeSyncData().frameRect);
             break;

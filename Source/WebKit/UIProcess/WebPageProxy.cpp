@@ -8742,14 +8742,14 @@ void WebPageProxy::broadcastFrameTreeSyncData(IPC::Connection& connection, Frame
 
     // FIXME: This could instead be an option in FrameTreeSyncData.in to allow
     // certain properties to be mutable from non-frame-owning processes.
-    if (frameTreePropertyIsRestrictedToFrameOwningProcess(data.type)) {
+    if (frameTreePropertyIsRestrictedToFrameOwningProcess(static_cast<WebCore::FrameTreeSyncDataType>(data.value.index()))) {
         if (&webFrameProxy->process() != &process.get()) {
             // FIXME: make this a MESSAGE_CHECK.
             return;
         }
     }
 
-    if (data.type == WebCore::FrameTreeSyncDataType::FrameRect)
+    if (data.value.index() == std::to_underlying(WebCore::FrameTreeSyncDataType::FrameRect))
         webFrameProxy->setRemoteFrameRect(std::get<IntRect>(data.value));
 
     forEachWebContentProcess([&](auto& webProcess, auto pageID) {
